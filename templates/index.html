@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viko Soluciones - Captura</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon.png">
+<link rel="apple-touch-icon" href="/static/favicon.png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+body {
+    background: #eef2f6;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+}
+
+/* HEADER */
+.header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: linear-gradient(135deg, #0a6ed1, #4a90e2);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+/* CONTENEDOR */
+.container-main {
+    margin-top: 80px;
+}
+
+/* CARD RESPONSIVE */
+.card-pro {
+    width: 100%;
+    max-width: 420px;
+    border-radius: 18px;
+    padding: 20px;
+    background: white;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+}
+
+/* TITULO */
+.title {
+    font-weight: 600;
+    color: #0a6ed1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* VIDEO */
+.video-box {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid #e5eaf0;
+}
+
+video {
+    width: 100%;
+    height: auto;
+}
+
+/* BOTONES */
+.btn-sap {
+    background: linear-gradient(135deg, #0a6ed1, #4a90e2);
+    border: none;
+    color: white;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.btn-soft {
+    background: #e7f0fa;
+    color: #0a6ed1;
+    border-radius: 10px;
+    border: none;
+    padding: 10px;
+}
+
+/* MENSAJE */
+.msg {
+    font-size: 13px;
+    margin-top: 5px;
+    display: none;
+}
+
+.msg.error { color: #dc3545; }
+.msg.ok { color: #198754; }
+
+/* FOOTER */
+.footer {
+    position: fixed;
+    bottom: 5px;
+    width: 100%;
+    text-align: center;
+    font-size: 11px;
+    color: #6c757d;
+}
+
+/* MÓVIL */
+@media (max-width: 576px) {
+    .card-pro {
+        padding: 15px;
+    }
+}
+</style>
+
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div><i class="bi bi-box-seam"></i> Viko Soluciones</div>
+    <div><i class="bi bi-camera"></i> Captura</div>
+</div>
+
+<!-- CONTENIDO -->
+<div class="container-main d-flex justify-content-center px-3">
+
+<div class="card-pro">
+
+    <h5 class="title mb-3">
+        <i class="bi bi-camera-fill"></i>
+        Captura de Evidencia
+    </h5>
+
+    <input type="text" id="guia" class="form-control mb-2" placeholder="Número de guía">
+
+    <div id="mensaje" class="msg"></div>
+
+    <div class="video-box mb-3">
+        <video id="video" autoplay></video>
+    </div>
+
+    <div class="d-flex flex-column flex-sm-row gap-2">
+        <button class="btn btn-soft w-100" onclick="capturar()">
+            <i class="bi bi-camera me-2"></i> Capturar
+        </button>
+
+        <button class="btn btn-sap w-100" onclick="subir()">
+            <i class="bi bi-cloud-upload me-2"></i> Subir
+        </button>
+    </div>
+
+</div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    © <span id="year"></span> Viko Soluciones
+</div>
+
+<script>
+
+// año dinámico
+document.getElementById("year").innerText = new Date().getFullYear();
+
+let imagenBase64 = "";
+
+// iniciar cámara
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+    document.getElementById('video').srcObject = stream;
+})
+.catch(err => {
+    mostrarMensaje("No se pudo acceder a la cámara", "error");
+});
+
+// capturar
+function capturar() {
+    const video = document.getElementById('video');
+    const canvas = document.createElement('canvas');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    imagenBase64 = canvas.toDataURL("image/jpeg");
+
+    mostrarMensaje("Foto capturada", "ok");
+}
+
+// subir
+function subir() {
+
+    const guiaInput = document.getElementById('guia');
+    const guia = guiaInput.value.trim();
+
+    limpiarMensaje();
+
+    if (!guia) {
+        mostrarMensaje("El número de guía es obligatorio", "error");
+        guiaInput.classList.add("is-invalid");
+        return;
+    }
+
+    if (!imagenBase64) {
+        mostrarMensaje("Primero captura la foto", "error");
+        return;
+    }
+
+    mostrarMensaje("Subiendo...", "");
+
+    fetch('/upload_camera', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guia: guia, imagen: imagenBase64 })
+    })
+    .then(res => res.text())
+    .then(() => {
+
+        // limpiar guía e imagen
+        guiaInput.value = "";
+        imagenBase64 = "";
+
+        guiaInput.classList.remove("is-invalid");
+
+        mostrarMensaje("Subido correctamente", "ok");
+    })
+    .catch(() => {
+        mostrarMensaje("Error al subir", "error");
+    });
+}
+
+// UI
+function mostrarMensaje(texto, tipo) {
+    const msg = document.getElementById('mensaje');
+    msg.style.display = "block";
+    msg.innerText = texto;
+    msg.className = "msg " + tipo;
+}
+
+function limpiarMensaje() {
+    const msg = document.getElementById('mensaje');
+    msg.style.display = "none";
+}
+
+// limpiar error al escribir
+document.getElementById('guia').addEventListener('input', function() {
+    this.classList.remove("is-invalid");
+    limpiarMensaje();
+});
+
+</script>
+
+</body>
+</html>
